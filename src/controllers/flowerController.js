@@ -71,32 +71,35 @@ export const FlowerController = {
         });
       }
 
-      // --- LANGKAH 2: UPLOAD GAMBAR KE SUPABASE STORAGE ---
+      // --- LANGKAH 2: VALIDASI & UPLOAD GAMBAR ---
       const file = req.file;
       const body = req.body;
       let publicUrl = null;
 
-      // Jika ada file yang diupload
-      if (file) {
-        // Buat nama file unik
-        const fileName = `flower-${Date.now()}-${file.originalname.replace(/\s/g, '-')}`;
-
-        // === PERBAIKAN DISINI: MENGGUNAKAN 'FLOWER-IMAGES' (HURUF BESAR) ===
-        const { error: uploadError } = await supabase.storage
-          .from('FLOWER-IMAGES') 
-          .upload(fileName, file.buffer, {
-            contentType: file.mimetype
-          });
-
-        if (uploadError) throw new Error(`Gagal Upload Gambar: ${uploadError.message}`);
-
-        // === PERBAIKAN DISINI JUGA ===
-        const { data: urlData } = supabase.storage
-          .from('FLOWER-IMAGES')
-          .getPublicUrl(fileName);
-          
-        publicUrl = urlData.publicUrl;
+      // [PENTING] Cek apakah ada file yang dikirim
+      if (!file) {
+        return res.status(400).json({ error: "File Gambar Wajib Diupload! (Tidak boleh kosong)" });
       }
+
+      // Jika file ada, lanjut proses upload
+      // Buat nama file unik
+      const fileName = `flower-${Date.now()}-${file.originalname.replace(/\s/g, '-')}`;
+
+      // Upload ke Bucket 'FLOWER-IMAGES' (Huruf Besar sesuai Supabase kamu)
+      const { error: uploadError } = await supabase.storage
+        .from('FLOWER-IMAGES') 
+        .upload(fileName, file.buffer, {
+          contentType: file.mimetype
+        });
+
+      if (uploadError) throw new Error(`Gagal Upload Gambar: ${uploadError.message}`);
+
+      // Ambil URL Publik gambar
+      const { data: urlData } = supabase.storage
+        .from('FLOWER-IMAGES')
+        .getPublicUrl(fileName);
+        
+      publicUrl = urlData.publicUrl;
 
       // --- LANGKAH 3: SIMPAN DATA KE DATABASE ---
       const flowerData = {
