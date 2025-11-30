@@ -63,12 +63,7 @@
             </div>
         </section>
         
-        <section class="p-6">
-            <h2 class="text-lg font-bold text-pastel-dark mb-3">Galeri Bunga</h2>
-            <div class="grid grid-cols-3 gap-2" id="gallery-container"></div>
-        </section>
-
-        <section class="px-6 pb-6">
+        <section class="px-6 pb-6 mt-6">
             <div class="flex justify-between items-center mb-3">
                 <h2 class="text-lg font-bold text-pastel-dark">Artikel Terbaru</h2>
                 <button onclick="navTo('artikel')" class="text-xs text-blue-500 hover:underline">Lihat Semua</button>
@@ -256,7 +251,6 @@
             window.scrollTo(0,0);
         }
 
-        // FUNGSI DETAIL BUNGA (Global)
         window.showFlowerDetail = function(index) {
             const flower = globalFlowers[index];
             if(!flower) return;
@@ -319,7 +313,7 @@
         async function loadAllFlowers() {
             const res = await fetch(`${API_BASE}/flowers`);
             const flowers = await res.json();
-            globalFlowers = flowers; // SIMPAN DATA KE GLOBAL
+            globalFlowers = flowers; 
             renderFlowers(flowers);
             renderFeatured(flowers);
         }
@@ -327,18 +321,14 @@
         async function filterBunga(categoryId) {
             const res = await fetch(`${API_BASE}/flowers/category/${categoryId}`);
             const flowers = await res.json();
-            globalFlowers = flowers; // SIMPAN DATA KE GLOBAL
+            globalFlowers = flowers; 
             renderFlowers(flowers);
         }
 
         function renderFlowers(data) {
             const grid = document.getElementById('flower-grid');
-            const gallery = document.getElementById('gallery-container');
             grid.innerHTML = '';
-            gallery.innerHTML = ''; // Reset gallery juga
-
             data.forEach((f, index) => {
-                // Render untuk Halaman Jenis Bunga (Katalog)
                 grid.innerHTML += `
                     <div onclick="showFlowerDetail(${index})" class="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition cursor-pointer">
                         <div class="h-32 bg-gray-100 relative">
@@ -351,17 +341,9 @@
                         </div>
                     </div>
                 `;
-
-                // Render untuk Galeri di Home (Kotak Kecil)
-                gallery.innerHTML += `
-                    <div onclick="showFlowerDetail(${index})" class="aspect-square bg-gray-100 rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition">
-                        <img src="${f.image_url}" class="w-full h-full object-cover">
-                    </div>
-                `;
             });
         }
 
-        // FUNGSI RENDER FEATURED (YANG SUDAH DIPERBAIKI)
         function renderFeatured(data) {
             const container = document.getElementById('featured-container');
             container.innerHTML = '';
@@ -382,49 +364,56 @@
             const adminUser = localStorage.getItem('admin_user');
             const adminPass = localStorage.getItem('admin_pass');
 
-            if (!adminUser || !adminPass) { navTo('login'); return; }
+            if (!adminUser || !adminPass) {
+                alert("Sesi habis, silakan login lagi.");
+                navTo('login');
+                return;
+            }
 
             statusDiv.classList.remove('hidden');
-            statusDiv.textContent = "Mengupload...";
+            statusDiv.textContent = "Mengupload data & foto...";
             statusDiv.className = "mt-4 text-center text-sm font-semibold text-blue-500";
             btn.disabled = true;
 
             try {
-                const file = document.getElementById('inputFile').files[0];
+                const fileInput = document.getElementById('inputFile');
+                const file = fileInput.files[0];
                 if (!file) throw new Error("Pilih foto dulu!");
 
-                const fileName = `flower-${Date.now()}-${Math.floor(Math.random()*1000)}.jpg`;
-                const { data, error } = await supabase.storage.from('flower-images').upload(fileName, file);
-                if (error) throw error;
+                const formData = new FormData();
+                formData.append('name', document.getElementById('inputName').value);
+                formData.append('latin_name', document.getElementById('inputLatin').value);
+                formData.append('category_id', document.getElementById('inputCategory').value);
+                formData.append('description', document.getElementById('inputDesc').value);
+                formData.append('image', file); 
 
-                const { data: publicData } = supabase.storage.from('flower-images').getPublicUrl(fileName);
                 const res = await fetch(`${API_BASE}/flowers`, {
                     method: 'POST',
                     headers: { 
-                        'Content-Type': 'application/json',
                         'x-admin-username': adminUser,
                         'x-admin-password': adminPass
                     },
-                    body: JSON.stringify({
-                        name: document.getElementById('inputName').value,
-                        latin_name: document.getElementById('inputLatin').value,
-                        category_id: document.getElementById('inputCategory').value,
-                        description: document.getElementById('inputDesc').value,
-                        image_url: publicData.publicUrl
-                    })
+                    body: formData
                 });
 
+                const result = await res.json();
+
                 if (res.ok) {
-                    statusDiv.textContent = "✅ Berhasil!";
+                    statusDiv.textContent = "✅ Berhasil Disimpan!";
                     statusDiv.className = "mt-4 text-center text-sm font-semibold text-green-600";
                     e.target.reset();
-                    loadData();
+                    loadData(); 
                     setTimeout(() => navTo('jenis'), 1000);
                 } else {
-                    if (res.status === 401) { alert("Login Salah!"); doLogout(); }
-                    else { throw new Error("Gagal simpan ke API"); }
+                    if (res.status === 401) { 
+                        alert("Password Salah!"); 
+                        doLogout(); 
+                    } else { 
+                        throw new Error(result.error || "Gagal menyimpan"); 
+                    }
                 }
             } catch (err) {
+                console.error(err);
                 statusDiv.textContent = "❌ " + err.message;
                 statusDiv.className = "mt-4 text-center text-sm font-semibold text-red-600";
             } finally { btn.disabled = false; }
