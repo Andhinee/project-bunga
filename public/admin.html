@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - FloristPedia</title>
+    
+    <script>
+        // Cek apakah Username DAN Password ada di saku browser
+        const savedUser = localStorage.getItem('admin_user');
+        const savedPass = localStorage.getItem('admin_pass');
+        
+        // Jika salah satu hilang, tendang ke Login
+        if (!savedUser || !savedPass) {
+            window.location.href = 'login.html';
+        }
+
+        function logout() {
+            if(confirm('Yakin ingin keluar?')) {
+                localStorage.removeItem('admin_user');
+                localStorage.removeItem('admin_pass');
+                window.location.href = 'login.html';
+            }
+        }
+    </script>
+    <style>
+        /* (Style Sama seperti sebelumnya, saya persingkat agar tidak kepanjangan) */
+        :root { --primary: #ff6b6b; --bg: #fdfbf7; --text: #333; }
+        body { font-family: 'Poppins', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding-bottom: 80px; }
+        .header { text-align: center; padding: 20px; } .header h2 { color: var(--primary); margin: 0; }
+        .container { padding: 20px; max-width: 600px; margin: 0 auto; }
+        .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        label { display: block; margin-top: 15px; font-weight: 500; font-size: 0.9rem; color: #666; }
+        input, select, textarea { width: 100%; padding: 12px; margin-top: 5px; border: 1px solid #eee; border-radius: 8px; box-sizing: border-box; }
+        .btn-submit { background: var(--primary); color: white; border: none; padding: 15px; width: 100%; border-radius: 10px; margin-top: 20px; font-weight: bold; cursor: pointer; }
+        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 10px 20px; display: flex; justify-content: space-between; box-shadow: 0 -2px 10px rgba(0,0,0,0.05); }
+        .nav-item { text-align: center; text-decoration: none; color: #aaa; font-size: 0.8rem; }
+        .nav-item.active { color: var(--primary); }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h2>Admin Panel</h2>
+        <small onclick="logout()" style="color: red; cursor: pointer; text-decoration: underline;">Logout</small>
+    </div>
+
+    <div class="container">
+        <div class="card">
+            <h3>Tambah Bunga Baru</h3>
+            <form id="upload-form">
+                <label>Nama Bunga</label>
+                <input type="text" name="name" required>
+
+                <label>Nama Latin</label>
+                <input type="text" name="latin_name">
+
+                <label>Kategori</label>
+                <select name="category">
+                    <option value="Bunga Hias">Bunga Hias</option>
+                    <option value="Bunga Tropis">Bunga Tropis</option>
+                    <option value="Bunga Musiman">Bunga Musiman</option>
+                    <option value="Bunga Liar">Bunga Liar</option>
+                </select>
+
+                <label>Deskripsi</label>
+                <textarea name="description" rows="3"></textarea>
+                <input type="hidden" name="care_tips" value="Lihat deskripsi">
+
+                <label>Foto Bunga</label>
+                <input type="file" name="image" required>
+
+                <button type="submit" id="btn-submit" class="btn-submit">Upload Data</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="bottom-nav">
+        <a href="index.html" class="nav-item">🏠 Home</a>
+        <a href="jenis-bunga.html" class="nav-item">🌸 Jenis</a>
+        <a href="admin.html" class="nav-item active">➕ Admin</a>
+        <a href="artikel.html" class="nav-item">📄 Artikel</a>
+    </div>
+
+    <script>
+        document.getElementById('upload-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btn-submit');
+            btn.innerText = "Mengupload..."; btn.disabled = true;
+
+            const formData = new FormData(e.target);
+            
+            // AMBIL USER & PASS DARI BROWSER
+            const user = localStorage.getItem('admin_user');
+            const pass = localStorage.getItem('admin_pass');
+
+            try {
+                const response = await fetch('/api/flowers', { 
+                    method: 'POST',
+                    headers: { 
+                        // KIRIM DUA HEADER KE BACKEND
+                        'x-admin-username': user,
+                        'x-admin-password': pass 
+                    },
+                    body: formData
+                });
+
+                if (response.ok) {
+                    alert("✅ Berhasil upload!");
+                    e.target.reset();
+                } else {
+                    if (response.status === 401) {
+                        alert("❌ Username/Password Salah! Login ulang.");
+                        logout();
+                    } else {
+                        const res = await response.json();
+                        alert("Gagal: " + res.error);
+                    }
+                }
+            } catch (err) { alert("Error Server"); } 
+            finally { btn.innerText = "Upload Data"; btn.disabled = false; }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FloristPedia - Modul 1</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        .bg-pastel-pink { background-color: #FFD1DC; }
+        .bg-pastel-green { background-color: #D1E7DD; }
+        .bg-pastel-lavender { background-color: #E6E6FA; }
+        .text-pastel-dark { color: #5D54A4; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .animate-fade-in { animation: fadeIn 0.5s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="bg-gray-50 pb-24 font-sans text-gray-700">
+
+    <div id="page-home" class="page-section">
+        <header class="bg-pastel-pink p-8 rounded-b-3xl shadow-md text-center">
+            <h1 class="text-3xl font-bold text-pastel-dark mb-2">Eksplorasi Jenis-Jenis Bunga</h1>
+            <p class="text-sm text-gray-600 mb-4">Temukan keindahan dan makna bunga dari seluruh dunia.</p>
+            <button onclick="navTo('jenis')" class="bg-white text-pastel-dark px-6 py-2 rounded-full font-bold shadow hover:bg-gray-100 transition transform hover:scale-105">
+                Jelajahi Bunga
+            </button>
+        </header>
+
+        <section class="p-6">
+            <h2 class="text-lg font-bold text-pastel-dark mb-2">Tentang Website</h2>
+            <p class="text-sm text-gray-500 text-justify">
+                Website ini menyediakan informasi lengkap tentang berbagai jenis bunga, makna filosofisnya, serta panduan cara merawatnya agar tetap segar dan indah.
+            </p>
+        </section>
+
+        <section class="pl-6 py-4 bg-pastel-green bg-opacity-40">
+            <h2 class="text-lg font-bold text-pastel-dark mb-3">Featured Flowers</h2>
+            <div class="flex overflow-x-auto gap-4 no-scrollbar pr-6" id="featured-container">
+                <div class="text-xs text-gray-400">Loading...</div>
+            </div>
+        </section>
+
+        <section class="p-6">
+            <h2 class="text-lg font-bold text-pastel-dark mb-3">Tips Perawatan</h2>
+            <div class="grid grid-cols-3 gap-3 text-center text-xs">
+                <div class="bg-white p-3 rounded-xl shadow">
+                    <div class="text-2xl mb-1">💧</div>
+                    <p class="font-semibold">Menyiram</p>
+                    <p class="text-[10px] text-gray-500 mt-1">Jaga kelembapan tanah</p>
+                </div>
+                <div class="bg-white p-3 rounded-xl shadow">
+                    <div class="text-2xl mb-1">☀️</div>
+                    <p class="font-semibold">Cahaya</p>
+                    <p class="text-[10px] text-gray-500 mt-1">Sinar matahari cukup</p>
+                </div>
+                <div class="bg-white p-3 rounded-xl shadow">
+                    <div class="text-2xl mb-1">🌱</div>
+                    <p class="font-semibold">Pupuk</p>
+                    <p class="text-[10px] text-gray-500 mt-1">Beri nutrisi rutin</p>
+                </div>
+            </div>
+        </section>
+        
+        <section class="px-6 pb-6">
+            <div class="flex justify-between items-center mb-3">
+                <h2 class="text-lg font-bold text-pastel-dark">Artikel Terbaru</h2>
+                <button onclick="navTo('artikel')" class="text-xs text-blue-500 hover:underline">Lihat Semua</button>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow border-l-4 border-pastel-pink">
+                <h3 class="font-bold text-sm">Cara Merawat Bunga untuk Pemula</h3>
+                <p class="text-xs text-gray-500 mt-1 mb-2">Panduan dasar agar tanaman hias Anda tidak cepat layu...</p>
+                <button onclick="bukaArtikel(0)" class="text-[10px] bg-gray-100 px-2 py-1 rounded hover:bg-gray-200">Baca Selengkapnya</button>
+            </div>
+        </section>
+    </div>
+
+    <div id="page-jenis" class="page-section hidden pt-6">
+        <h2 class="text-center text-2xl font-bold text-pastel-dark mb-4">Katalog Bunga</h2>
+        <div class="flex overflow-x-auto gap-2 px-6 mb-6 no-scrollbar" id="category-chips">
+            <button onclick="loadAllFlowers()" class="whitespace-nowrap bg-pastel-dark text-white px-4 py-1.5 rounded-full text-sm shadow">Semua</button>
+        </div>
+        <div class="grid grid-cols-2 gap-4 px-6 pb-6" id="flower-grid"></div>
+    </div>
+
+    <div id="page-login" class="page-section hidden pt-20 px-6 h-screen bg-gray-100">
+        <div class="bg-white p-8 rounded-2xl shadow-xl max-w-sm mx-auto">
+            <div class="text-center mb-6">
+                <span class="text-4xl">🔒</span>
+                <h2 class="text-2xl font-bold text-pastel-dark mt-2">Login Admin</h2>
+                <p class="text-xs text-gray-500">Masukkan kredensial untuk mengakses panel.</p>
+            </div>
+            <form id="loginForm" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold mb-1 text-gray-500">Username</label>
+                    <input type="text" id="loginUser" class="w-full border p-2 rounded-lg text-sm outline-none focus:ring-2 ring-pastel-pink" placeholder="Username">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold mb-1 text-gray-500">Password</label>
+                    <input type="password" id="loginPass" class="w-full border p-2 rounded-lg text-sm outline-none focus:ring-2 ring-pastel-pink" placeholder="Password">
+                </div>
+                <button type="submit" class="w-full bg-pastel-dark text-white py-2 rounded-xl font-bold shadow hover:bg-indigo-700 transition">Masuk</button>
+            </form>
+            <button onclick="navTo('home')" class="w-full mt-4 text-xs text-gray-400 hover:text-gray-600">Kembali ke Home</button>
+        </div>
+    </div>
+
+    <div id="page-admin" class="page-section hidden pt-6 px-6">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold text-red-500">Admin Panel</h2>
+            <button onclick="doLogout()" class="text-xs text-red-400 border border-red-200 px-3 py-1 rounded-full hover:bg-red-50">Logout</button>
+        </div>
+        <div class="bg-white p-6 rounded-2xl shadow-lg">
+            <h3 class="font-bold text-gray-700 mb-4 border-b pb-2">Tambah Bunga Baru</h3>
+            <form id="uploadForm" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold mb-1 text-gray-500">Nama Bunga</label>
+                    <input type="text" id="inputName" class="w-full border p-2 rounded-lg text-sm bg-gray-50 focus:ring-2 ring-pastel-pink outline-none" required placeholder="Contoh: Mawar Merah">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold mb-1 text-gray-500">Nama Latin</label>
+                    <input type="text" id="inputLatin" class="w-full border p-2 rounded-lg text-sm bg-gray-50 outline-none" placeholder="Contoh: Rosa">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold mb-1 text-gray-500">Kategori</label>
+                    <select id="inputCategory" class="w-full border p-2 rounded-lg text-sm bg-gray-50 outline-none"></select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold mb-1 text-gray-500">Deskripsi & Perawatan</label>
+                    <textarea id="inputDesc" class="w-full border p-2 rounded-lg text-sm bg-gray-50 outline-none h-24" placeholder="Jelaskan makna dan cara merawat..."></textarea>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold mb-1 text-gray-500">Foto Bunga</label>
+                    <input type="file" id="inputFile" class="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-pastel-pink file:text-pastel-dark hover:file:bg-pink-200">
+                </div>
+                <button type="submit" class="w-full bg-pastel-dark text-white py-3 rounded-xl font-bold shadow hover:bg-indigo-700 transition">Upload Data</button>
+            </form>
+            <div id="uploadStatus" class="mt-4 text-center text-sm font-semibold hidden"></div>
+        </div>
+    </div>
+
+    <div id="page-tentang" class="page-section hidden pt-10 px-6">
+        <h2 class="text-center text-2xl font-bold text-pastel-dark mb-6">Tentang Kami</h2>
+        <div class="bg-white p-6 rounded-2xl shadow-lg text-center">
+            <div class="w-20 h-20 bg-pastel-pink rounded-full mx-auto mb-4 flex items-center justify-center text-3xl">🌺</div>
+            <p class="text-sm leading-relaxed mb-4 text-gray-600">
+                FloristPedia dibuat sebagai tugas Praktikum Modul 1 Application Programming Interface. Kami bertujuan membantu pecinta tanaman dan pelajar mengenal flora lebih dekat.
+            </p>
+            <div class="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                <p class="text-xs text-gray-500 uppercase tracking-widest mb-1">Dibuat Oleh</p>
+                <p class="font-bold text-gray-800">Mahasiswa Teknik</p>
+                <p class="text-sm text-blue-600 font-mono mt-1">NIM: 21120123140141</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="page-artikel" class="page-section hidden pt-6 px-6">
+        <h2 class="text-center text-2xl font-bold text-pastel-dark mb-6">Artikel Edukatif</h2>
+        <div id="article-list-container" class="space-y-4"></div>
+    </div>
+
+    <div id="page-detail-artikel" class="page-section hidden pt-6 px-6 min-h-screen bg-white">
+        <button onclick="navTo('artikel')" class="mb-4 flex items-center text-sm text-gray-500 hover:text-pastel-dark transition">
+            <span class="mr-2 text-xl">←</span> Kembali ke Daftar
+        </button>
+        <article class="animate-fade-in pb-20">
+            <div id="detail-art-img" class="h-48 w-full bg-gray-200 rounded-2xl mb-4 flex items-center justify-center text-6xl shadow-inner"></div>
+            <span class="bg-pastel-green text-green-800 text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wide">Tips & Trik</span>
+            <h1 id="detail-art-title" class="text-2xl font-bold text-gray-800 mt-3 mb-2 leading-tight">Judul Artikel</h1>
+            <p class="text-xs text-gray-400 mb-6">Ditulis oleh Admin • FloristPedia</p>
+            <div id="detail-art-content" class="text-sm text-gray-600 leading-7 text-justify space-y-4"></div>
+        </article>
+    </div>
+
+    <nav class="fixed bottom-0 w-full bg-white shadow-[0_-2px_10px_rgba(0,0,0,0.1)] flex justify-around py-3 z-50 rounded-t-2xl">
+        <button onclick="navTo('home')" class="flex flex-col items-center text-gray-400 hover:text-pastel-dark focus:text-pastel-dark transition group"><span class="text-xl mb-1 group-focus:scale-110 transition">🏠</span><span class="text-[10px]">Home</span></button>
+        <button onclick="navTo('jenis')" class="flex flex-col items-center text-gray-400 hover:text-pastel-dark focus:text-pastel-dark transition group"><span class="text-xl mb-1 group-focus:scale-110 transition">🌸</span><span class="text-[10px]">Jenis</span></button>
+        <button onclick="navTo('admin')" class="flex flex-col items-center text-gray-400 hover:text-pastel-dark focus:text-pastel-dark transition group"><span class="text-xl mb-1 group-focus:scale-110 transition">➕</span><span class="text-[10px]">Admin</span></button>
+        <button onclick="navTo('artikel')" class="flex flex-col items-center text-gray-400 hover:text-pastel-dark focus:text-pastel-dark transition group"><span class="text-xl mb-1 group-focus:scale-110 transition">📄</span><span class="text-[10px]">Artikel</span></button>
+        <button onclick="navTo('tentang')" class="flex flex-col items-center text-gray-400 hover:text-pastel-dark focus:text-pastel-dark transition group"><span class="text-xl mb-1 group-focus:scale-110 transition">ℹ️</span><span class="text-[10px]">Tentang</span></button>
+    </nav>
+
+    <script>
+        const API_BASE = "/api"; 
+        const supabaseUrl = 'https://zuqtnatfqryzkxavgdgr.supabase.co'; 
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp1cXRuYXRmcXJ5emt4YXZnZGdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ0ODUwNTQsImV4cCI6MjA4MDA2MTA1NH0.RHMeoLptvBlCPMkbe9FyxHOjVwdHRDvAE0UneP2wyOA';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        const databaseArtikel = [
+            { title: "5 Bunga Mudah Dirawat untuk Pemula", emoji: "🌵", summary: "Cocok untuk pemula yang sibuk namun ingin rumah asri.", content: `<p>Bagi Anda yang memiliki kesibukan tinggi namun ingin menghadirkan suasana asri di rumah, memilih tanaman yang tepat adalah kuncinya.</p><br><p><strong>1. Lidah Mertua (Sansevieria)</strong><br>Tanaman ini hampir mustahil untuk mati. Ia bisa bertahan dengan cahaya minim dan jarang disiram.</p><br><p><strong>2. Kaktus & Sukulen</strong><br>Hanya perlu disiram seminggu sekali. Sangat cocok diletakkan di dekat jendela yang terkena sinar matahari.</p><br><p><strong>3. Peace Lily</strong><br>Bunga cantik yang akan "memberitahu" Anda saat haus dengan cara sedikit layu, dan segar kembali setelah disiram.</p>` },
+            { title: "Makna Tersembunyi Warna Mawar", emoji: "🌹", summary: "Setiap warna memiliki arti yang berbeda, jangan salah kirim!", content: `<p>Mawar tidak hanya sekadar bunga indah, setiap warnanya membawa pesan rahasia. Jangan sampai salah mengirim bunga ke orang yang salah!</p><br><ul class="list-disc pl-5 space-y-2"><li><strong>Mawar Merah:</strong> Simbol cinta sejati, gairah, dan keberanian. Cocok untuk pasangan.</li><li><strong>Mawar Putih:</strong> Melambangkan kesucian, kepolosan, dan awal yang baru. Sering dipakai di pernikahan.</li><li><strong>Mawar Kuning:</strong> Lambang persahabatan dan keceriaan. Jangan berikan ini saat melamar, karena bisa berarti "kita teman saja".</li><li><strong>Mawar Pink:</strong> Menyiratkan rasa kagum, terima kasih, dan kelembutan.</li></ul>` },
+            { title: "Tips Agar Bunga Potong Tahan Lama", emoji: "💐", summary: "Ingin buket bunga wisuda awet berminggu-minggu? Simak tipsnya.", content: `<p>Mendapatkan buket bunga memang menyenangkan, tapi sedih rasanya jika cepat layu. Berikut tips agar bunga potong awet:</p><br><p>1. <strong>Potong Batang Miring:</strong> Potong ujung batang sekitar 2 cm dengan sudut 45 derajat agar area serap air lebih luas.</p><p>2. <strong>Ganti Air Rutin:</strong> Ganti air vas setiap 2 hari sekali agar tidak tumbuh bakteri pembusuk.</p><p>3. <strong>Hindari Matahari Langsung:</strong> Letakkan di tempat sejuk, jauh dari sinar matahari terik dan buah-buahan matang (gas etilen mempercepat layu).</p>` }
+        ];
+
+        function renderArticles() {
+            const container = document.getElementById('article-list-container');
+            container.innerHTML = '';
+            databaseArtikel.forEach((art, index) => {
+                container.innerHTML += `
+                    <div class="bg-white rounded-xl shadow overflow-hidden transform transition hover:-translate-y-1">
+                        <div class="h-32 bg-gray-200 w-full flex items-center justify-center text-gray-400 text-4xl">${art.emoji}</div>
+                        <div class="p-4">
+                            <h3 class="font-bold text-lg text-gray-800">${art.title}</h3>
+                            <p class="text-xs text-gray-500 mt-1 mb-3">${art.summary}</p>
+                            <button onclick="bukaArtikel(${index})" class="bg-pastel-green px-4 py-1.5 rounded text-xs font-bold text-green-800 hover:bg-green-200 transition">Baca Selengkapnya</button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function bukaArtikel(index) {
+            const data = databaseArtikel[index];
+            document.getElementById('detail-art-title').innerText = data.title;
+            document.getElementById('detail-art-img').innerText = data.emoji;
+            document.getElementById('detail-art-content').innerHTML = data.content;
+            navTo('detail-artikel');
+        }
+
+        function navTo(pageId) {
+            if (pageId === 'admin') {
+                const user = localStorage.getItem('admin_user');
+                const pass = localStorage.getItem('admin_pass');
+                if (!user || !pass) { pageId = 'login'; }
+            }
+            document.querySelectorAll('.page-section').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`page-${pageId}`).classList.remove('hidden');
+            window.scrollTo(0,0);
+        }
+
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = e.target.querySelector('button');
+            const user = document.getElementById('loginUser').value;
+            const pass = document.getElementById('loginPass').value;
+            const originalText = btn.innerText;
+            btn.innerText = "Mengecek..."; btn.disabled = true;
+
+            try {
+                const response = await fetch(`${API_BASE}/flowers/login`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: user, password: pass })
+                });
+                if (response.ok) {
+                    localStorage.setItem('admin_user', user); localStorage.setItem('admin_pass', pass);
+                    e.target.reset(); navTo('admin');
+                } else { alert("❌ Username atau Password Salah!"); }
+            } catch (err) { alert("Gagal menghubungi server."); } 
+            finally { btn.innerText = originalText; btn.disabled = false; }
+        });
+
+        function doLogout() {
+            if(confirm("Yakin ingin keluar?")) {
+                localStorage.removeItem('admin_user'); localStorage.removeItem('admin_pass');
+                navTo('login');
+            }
+        }
+
+        async function loadData() {
+            try {
+                renderArticles();
+                const resCat = await fetch(`${API_BASE}/categories`);
+                const categories = await resCat.json();
+                const chipContainer = document.getElementById('category-chips');
+                const selectAdmin = document.getElementById('inputCategory');
+                
+                chipContainer.innerHTML = `<button onclick="loadAllFlowers()" class="whitespace-nowrap bg-pastel-dark text-white px-4 py-1.5 rounded-full text-sm shadow">Semua</button>`;
+                selectAdmin.innerHTML = '';
+
+                categories.forEach(cat => {
+                    chipContainer.innerHTML += `<button onclick="filterBunga('${cat.id}')" class="whitespace-nowrap bg-white border border-gray-200 text-gray-600 px-4 py-1.5 rounded-full text-sm shadow-sm hover:bg-gray-50">${cat.name}</button>`;
+                    selectAdmin.innerHTML += `<option value="${cat.id}">${cat.name}</option>`;
+                });
+                loadAllFlowers();
+            } catch (err) { console.error("Error loading data:", err); }
+        }
+
+        async function loadAllFlowers() {
+            const res = await fetch(`${API_BASE}/flowers`);
+            const flowers = await res.json();
+            renderFlowers(flowers);
+            renderFeatured(flowers);
+        }
+
+        async function filterBunga(categoryId) {
+            const res = await fetch(`${API_BASE}/flowers/category/${categoryId}`);
+            const flowers = await res.json();
+            renderFlowers(flowers);
+        }
+
+        function renderFlowers(data) {
+            const grid = document.getElementById('flower-grid');
+            grid.innerHTML = '';
+            data.forEach(f => {
+                grid.innerHTML += `
+                    <div class="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition">
+                        <div class="h-32 bg-gray-100 relative">
+                            <img src="${f.image_url}" class="w-full h-full object-cover">
+                            <span class="absolute top-2 right-2 bg-white/80 px-2 py-0.5 rounded text-[10px] font-bold text-pastel-dark">${f.categories?.name || 'Umum'}</span>
+                        </div>
+                        <div class="p-3">
+                            <h3 class="font-bold text-gray-800 text-sm truncate">${f.name}</h3>
+                            <p class="text-[10px] text-gray-500 italic mb-2">${f.latin_name || ''}</p>
+                            <p class="text-xs text-gray-600 line-clamp-2">${f.description || 'Tidak ada deskripsi'}</p>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function renderFeatured(data) {
+            const container = document.getElementById('featured-container');
+            container.innerHTML = '';
+            data.slice(0, 5).forEach(f => {
+                container.innerHTML += `
+                    <div class="min-w-[140px] bg-white rounded-xl p-2 shadow-sm text-center border border-white/50">
+                        <img src="${f.image_url}" class="w-full h-24 object-cover rounded-lg mb-2 bg-gray-100">
+                        <h3 class="font-bold text-xs text-gray-700 truncate">${f.name}</h3>
+                    </div>
+                `;
+            });
+        }
+
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const statusDiv = document.getElementById('uploadStatus');
+            const btn = e.target.querySelector('button');
+            const adminUser = localStorage.getItem('admin_user');
+            const adminPass = localStorage.getItem('admin_pass');
+
+            if (!adminUser || !adminPass) { navTo('login'); return; }
+
+            statusDiv.classList.remove('hidden');
+            statusDiv.textContent = "Mengupload...";
+            statusDiv.className = "mt-4 text-center text-sm font-semibold text-blue-500";
+            btn.disabled = true;
+
+            try {
+                const file = document.getElementById('inputFile').files[0];
+                if (!file) throw new Error("Pilih foto dulu!");
+
+                const fileName = `flower-${Date.now()}-${Math.floor(Math.random()*1000)}.jpg`;
+                const { data, error } = await supabase.storage.from('flower-images').upload(fileName, file);
+                if (error) throw error;
+
+                const { data: publicData } = supabase.storage.from('flower-images').getPublicUrl(fileName);
+                const res = await fetch(`${API_BASE}/flowers`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'x-admin-username': adminUser,
+                        'x-admin-password': adminPass
+                    },
+                    body: JSON.stringify({
+                        name: document.getElementById('inputName').value,
+                        latin_name: document.getElementById('inputLatin').value,
+                        category_id: document.getElementById('inputCategory').value,
+                        description: document.getElementById('inputDesc').value,
+                        image_url: publicData.publicUrl
+                    })
+                });
+
+                if (res.ok) {
+                    statusDiv.textContent = "✅ Berhasil!";
+                    statusDiv.className = "mt-4 text-center text-sm font-semibold text-green-600";
+                    e.target.reset();
+                    loadData();
+                    setTimeout(() => navTo('jenis'), 1000);
+                } else {
+                    if (res.status === 401) { alert("Login Salah!"); doLogout(); }
+                    else { throw new Error("Gagal simpan ke API"); }
+                }
+            } catch (err) {
+                statusDiv.textContent = "❌ " + err.message;
+                statusDiv.className = "mt-4 text-center text-sm font-semibold text-red-600";
+            } finally { btn.disabled = false; }
+        });
+
+        loadData();
+    </script>
+</body>
+</html>
