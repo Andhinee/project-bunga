@@ -63,6 +63,11 @@
             </div>
         </section>
         
+        <section class="p-6">
+            <h2 class="text-lg font-bold text-pastel-dark mb-3">Galeri Bunga</h2>
+            <div class="grid grid-cols-3 gap-2" id="gallery-container"></div>
+        </section>
+
         <section class="px-6 pb-6">
             <div class="flex justify-between items-center mb-3">
                 <h2 class="text-lg font-bold text-pastel-dark">Artikel Terbaru</h2>
@@ -173,6 +178,26 @@
         </article>
     </div>
 
+    <div id="page-detail-bunga" class="page-section hidden bg-white min-h-screen pb-24">
+        <div class="relative h-72">
+            <img id="detailImg" src="" class="w-full h-full object-cover">
+            <button onclick="navTo('home')" class="absolute top-4 left-4 bg-white/80 p-2 rounded-full shadow text-xl hover:bg-white transition">⬅️</button>
+        </div>
+        <div class="p-6 -mt-6 bg-white rounded-t-3xl relative">
+            <div class="flex justify-between items-start">
+                <span id="detailCat" class="bg-pastel-pink text-pastel-dark px-3 py-1 rounded-full text-xs font-bold tracking-wide">Category</span>
+            </div>
+            <h2 id="detailName" class="text-3xl font-bold text-gray-800 mt-3">Nama Bunga</h2>
+            <p id="detailLatin" class="text-sm text-gray-500 italic mb-6">Nama Latin</p>
+            <div class="space-y-4">
+                <div class="bg-gray-50 p-5 rounded-2xl border border-gray-100">
+                    <h3 class="font-bold text-sm text-gray-700 mb-2 flex items-center">📖 Deskripsi & Makna</h3>
+                    <p id="detailDesc" class="text-sm text-gray-600 leading-relaxed text-justify">...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <nav class="fixed bottom-0 w-full bg-white shadow-[0_-2px_10px_rgba(0,0,0,0.1)] flex justify-around py-3 z-50 rounded-t-2xl">
         <button onclick="navTo('home')" class="flex flex-col items-center text-gray-400 hover:text-pastel-dark focus:text-pastel-dark transition group"><span class="text-xl mb-1 group-focus:scale-110 transition">🏠</span><span class="text-[10px]">Home</span></button>
         <button onclick="navTo('jenis')" class="flex flex-col items-center text-gray-400 hover:text-pastel-dark focus:text-pastel-dark transition group"><span class="text-xl mb-1 group-focus:scale-110 transition">🌸</span><span class="text-[10px]">Jenis</span></button>
@@ -186,6 +211,8 @@
         const supabaseUrl = 'https://zuqtnatfqryzkxavgdgr.supabase.co'; 
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp1cXRuYXRmcXJ5emt4YXZnZGdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ0ODUwNTQsImV4cCI6MjA4MDA2MTA1NH0.RHMeoLptvBlCPMkbe9FyxHOjVwdHRDvAE0UneP2wyOA';
         const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        let globalFlowers = []; // Variabel penting untuk menyimpan data bunga
 
         const databaseArtikel = [
             { title: "5 Bunga Mudah Dirawat untuk Pemula", emoji: "🌵", summary: "Cocok untuk pemula yang sibuk namun ingin rumah asri.", content: `<p>Bagi Anda yang memiliki kesibukan tinggi namun ingin menghadirkan suasana asri di rumah, memilih tanaman yang tepat adalah kuncinya.</p><br><p><strong>1. Lidah Mertua (Sansevieria)</strong><br>Tanaman ini hampir mustahil untuk mati. Ia bisa bertahan dengan cahaya minim dan jarang disiram.</p><br><p><strong>2. Kaktus & Sukulen</strong><br>Hanya perlu disiram seminggu sekali. Sangat cocok diletakkan di dekat jendela yang terkena sinar matahari.</p><br><p><strong>3. Peace Lily</strong><br>Bunga cantik yang akan "memberitahu" Anda saat haus dengan cara sedikit layu, dan segar kembali setelah disiram.</p>` },
@@ -227,6 +254,20 @@
             document.querySelectorAll('.page-section').forEach(el => el.classList.add('hidden'));
             document.getElementById(`page-${pageId}`).classList.remove('hidden');
             window.scrollTo(0,0);
+        }
+
+        // FUNGSI DETAIL BUNGA (Global)
+        window.showFlowerDetail = function(index) {
+            const flower = globalFlowers[index];
+            if(!flower) return;
+
+            document.getElementById('detailImg').src = flower.image_url;
+            document.getElementById('detailName').innerText = flower.name;
+            document.getElementById('detailLatin').innerText = flower.latin_name || '';
+            document.getElementById('detailCat').innerText = flower.categories?.name || 'Umum';
+            document.getElementById('detailDesc').innerText = flower.description || 'Tidak ada deskripsi.';
+            
+            navTo('detail-bunga');
         }
 
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
@@ -278,6 +319,7 @@
         async function loadAllFlowers() {
             const res = await fetch(`${API_BASE}/flowers`);
             const flowers = await res.json();
+            globalFlowers = flowers; // SIMPAN DATA KE GLOBAL
             renderFlowers(flowers);
             renderFeatured(flowers);
         }
@@ -285,35 +327,47 @@
         async function filterBunga(categoryId) {
             const res = await fetch(`${API_BASE}/flowers/category/${categoryId}`);
             const flowers = await res.json();
+            globalFlowers = flowers; // SIMPAN DATA KE GLOBAL
             renderFlowers(flowers);
         }
 
         function renderFlowers(data) {
             const grid = document.getElementById('flower-grid');
+            const gallery = document.getElementById('gallery-container');
             grid.innerHTML = '';
-            data.forEach(f => {
+            gallery.innerHTML = ''; // Reset gallery juga
+
+            data.forEach((f, index) => {
+                // Render untuk Halaman Jenis Bunga (Katalog)
                 grid.innerHTML += `
-                    <div class="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition">
+                    <div onclick="showFlowerDetail(${index})" class="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition cursor-pointer">
                         <div class="h-32 bg-gray-100 relative">
                             <img src="${f.image_url}" class="w-full h-full object-cover">
                             <span class="absolute top-2 right-2 bg-white/80 px-2 py-0.5 rounded text-[10px] font-bold text-pastel-dark">${f.categories?.name || 'Umum'}</span>
                         </div>
                         <div class="p-3">
                             <h3 class="font-bold text-gray-800 text-sm truncate">${f.name}</h3>
-                            <p class="text-[10px] text-gray-500 italic mb-2">${f.latin_name || ''}</p>
-                            <p class="text-xs text-gray-600 line-clamp-2">${f.description || 'Tidak ada deskripsi'}</p>
+                            <p class="text-xs text-gray-600 line-clamp-2 mt-1">${f.description || 'Tidak ada deskripsi'}</p>
                         </div>
+                    </div>
+                `;
+
+                // Render untuk Galeri di Home (Kotak Kecil)
+                gallery.innerHTML += `
+                    <div onclick="showFlowerDetail(${index})" class="aspect-square bg-gray-100 rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition">
+                        <img src="${f.image_url}" class="w-full h-full object-cover">
                     </div>
                 `;
             });
         }
 
+        // FUNGSI RENDER FEATURED (YANG SUDAH DIPERBAIKI)
         function renderFeatured(data) {
             const container = document.getElementById('featured-container');
             container.innerHTML = '';
-            data.slice(0, 5).forEach(f => {
+            data.slice(0, 5).forEach((f, index) => {
                 container.innerHTML += `
-                    <div class="min-w-[140px] bg-white rounded-xl p-2 shadow-sm text-center border border-white/50">
+                    <div onclick="showFlowerDetail(${index})" class="min-w-[140px] bg-white rounded-xl p-2 shadow-sm text-center border border-white/50 cursor-pointer hover:scale-105 transition transform duration-200">
                         <img src="${f.image_url}" class="w-full h-24 object-cover rounded-lg mb-2 bg-gray-100">
                         <h3 class="font-bold text-xs text-gray-700 truncate">${f.name}</h3>
                     </div>
