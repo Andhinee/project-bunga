@@ -78,21 +78,21 @@ export const FlowerController = {
 
       // Jika ada file yang diupload
       if (file) {
-        // Buat nama file unik (pake timestamp biar gak bentrok)
+        // Buat nama file unik
         const fileName = `flower-${Date.now()}-${file.originalname.replace(/\s/g, '-')}`;
 
-        // Upload ke Bucket 'flower-images'
+        // === PERBAIKAN DISINI: MENGGUNAKAN 'FLOWER-IMAGES' (HURUF BESAR) ===
         const { error: uploadError } = await supabase.storage
-          .from('flower-images')
+          .from('FLOWER-IMAGES') 
           .upload(fileName, file.buffer, {
             contentType: file.mimetype
           });
 
         if (uploadError) throw new Error(`Gagal Upload Gambar: ${uploadError.message}`);
 
-        // Ambil URL Publik gambar
+        // === PERBAIKAN DISINI JUGA ===
         const { data: urlData } = supabase.storage
-          .from('flower-images')
+          .from('FLOWER-IMAGES')
           .getPublicUrl(fileName);
           
         publicUrl = urlData.publicUrl;
