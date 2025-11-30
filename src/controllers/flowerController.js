@@ -1,231 +1,108 @@
 // src/controllers/flowerController.js
-
 import { FlowerModel } from "../models/flowerModel.js";
-
-import { supabase } from "../config/supabaseClient.js";
-
+import { supabase } from "../config/supabaseClient.js"; 
 import dotenv from "dotenv";
-
-
 
 dotenv.config();
 
-
-
 export const FlowerController = {
 
-  // 1. GET ALL (Publik - Siapa saja bisa lihat)
-
+  // 1. GET ALL
   async getAll(req, res) {
-
     try {
-
       const flowers = await FlowerModel.getAll();
-
       res.json(flowers);
-
     } catch (err) {
-
       res.status(500).json({ error: err.message });
-
     }
+  }, // <--- JANGAN LUPA KOMA INI
 
-  },
-
-
-
-  // 2. GET BY CATEGORY (Publik)
-
+  // 2. GET BY CATEGORY
   async getByCategory(req, res) {
-
     try {
-
-      // req.params.category diambil dari URL (misal: /api/flowers/category/Hias)
-
       const flowers = await FlowerModel.getByCategory(req.params.category);
-
       res.json(flowers);
-
     } catch (err) {
-
       res.status(500).json({ error: err.message });
-
     }
+  }, // <--- JANGAN LUPA KOMA INI
 
-  },
-
-
-
-  // 3. LOGIN CHECK (Endpoint Khusus untuk Form Login)
-
+  // 3. LOGIN CHECK
   async login(req, res) {
-
     try {
-
       const { username, password } = req.body;
-
-     
-
       const serverUser = process.env.ADMIN_USERNAME;
-
       const serverPass = process.env.ADMIN_PASSWORD;
 
-
-
-      // Validasi: Pastikan .env sudah diset
-
       if (!serverUser || !serverPass) {
-
-        return res.status(500).json({ error: "Server Error: Admin credentials not set." });
-
+        return res.status(500).json({ error: "Server config error." });
       }
-
-
-
-      // Cek apakah username & password cocok
 
       if (username === serverUser && password === serverPass) {
-
         return res.status(200).json({ message: "Login Berhasil", token: "valid" });
-
       } else {
-
         return res.status(401).json({ error: "Username atau Password Salah!" });
-
       }
-
     } catch (err) {
-
       res.status(500).json({ error: err.message });
-
     }
+  }, // <--- JANGAN LUPA KOMA INI
 
-  },
-
-
-
-  // 4. CREATE (Private - Butuh Username & Password Admin di Header)
-
+  // 4. CREATE (UPLOAD)
   async create(req, res) {
-
     try {
-
-      // --- LANGKAH 1: CEK OTENTIKASI ---
-
+      // A. Cek Login
       const clientUser = req.headers['x-admin-username'];
-
       const clientPass = req.headers['x-admin-password'];
-
       const serverUser = process.env.ADMIN_USERNAME;
-
       const serverPass = process.env.ADMIN_PASSWORD;
 
-
-
-      // Jika password di .env belum diset atau password dari klien salah
-
       if (!serverUser || !serverPass) {
-
-        return res.status(500).json({ error: "Konfigurasi Server Error (Environment Variables)" });
-
+        return res.status(500).json({ error: "Server config error" });
       }
-
-
 
       if (clientUser !== serverUser || clientPass !== serverPass) {
+        return res.status(401).json({ error: "Login Salah!" });
+      }
 
-        return res.status(401).json({
+      // B. Cek File (Wajib Ada)
+      const file = req.file;
+      if (!file) {
+        return res.status(400).json({ error: "File Gambar Wajib Diupload!" });
+      }
 
-            error: "Akses Ditolak: Username atau Password Admin Salah!"
+      // C. Upload ke Supabase
+      // Pastikan nama bucket 'flower-images' (Huruf Kecil) sudah dibuat di Supabase
+      const bucketName = 'flower-images'; 
+      const fileName = `flower-${Date.now()}-${file.originalname.replace(/\s/g, '-')}`;
 
+      const { error: uploadError } = await supabase.storage
+        .from(bucketName)
+        .upload(fileName, file.buffer, {
+          contentType: file.mimetype
         });
 
+      if (uploadError) {
+        throw new Error(`Upload Gagal: ${uploadError.message}`);
       }
 
+      // D. Ambil Link Gambar
+      const { data: urlData } = supabase.storage
+        .from(bucketName)
+        .getPublicUrl(fileName);
 
-
-      // --- LANGKAH 2: UPLOAD GAMBAR KE SUPABASE STORAGE ---
-
-      const file = req.file;
-
-      const body = req.body;
-
-      let publicUrl = null;
-
-
-
-      // Jika ada file yang diupload
-
-      if (file) {
-
-        // Buat nama file unik
-
-        const fileName = `flower-${Date.now()}-${file.originalname.replace(/\s/g, '-')}`;
-
-
-
-        // === PERBAIKAN DISINI: MENGGUNAKAN 'FLOWER-IMAGES' (HURUF BESAR) ===
-
-        const { error: uploadError } = await supabase.storage
-
-          .from('FLOWER-IMAGES')
-
-          .upload(fileName, file.buffer, {
-
-            contentType: file.mimetype
-
-          });
-
-
-
-        if (uploadError) throw new Error(`Gagal Upload Gambar: ${uploadError.message}`);
-
-
-
-        // === PERBAIKAN DISINI JUGA ===
-
-        const { data: urlData } = supabase.storage
-
-          .from('FLOWER-IMAGES')
-
-          .getPublicUrl(fileName);
-
-         
-
-        publicUrl = urlData.publicUrl;
-
-      }
-
-
-
-      // --- LANGKAH 3: SIMPAN DATA KE DATABASE ---
-
-      const flowerData = {
-
-        ...body,          
-
-        image_url: publicUrl
-
-      };
-
-
-
-      const newFlower = await FlowerModel.create(flowerData);
-
-     
-
+      // E. Simpan ke Database
+      const newFlower = await FlowerModel.create({
+        ...req.body,
+        image_url: urlData.publicUrl
+      });
+      
       res.status(201).json(newFlower);
 
-
-
     } catch (err) {
-
-      console.error("Error di Controller:", err);
-
+      console.error("Error:", err);
       res.status(400).json({ error: err.message });
-
     }
-
-  }
-
+  } 
+  // <--- TIDAK PERLU KOMA DI FUNGSI TERAKHIR
 };
